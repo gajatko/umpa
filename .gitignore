@@ -1,0 +1,13 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/Debug
+/Ruletka/Debug
+/Ruletka/x64
+/x64
+/.vs
+*.obj
+/rul_cuda/x64
+
+
