@@ -78,7 +78,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <CudaCompile Include="kernel.cu" />
-    <CudaCompile Include="rula.cu" />
+    <CudaCompile Include="rula.cpp" />
     <CudaCompile Include="vecmul.cu" />
     <CudaCompile Include="wave.cu" />
   </ItemGroup>
