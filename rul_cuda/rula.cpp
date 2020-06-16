@@ -1,6 +1,7 @@
 #include "cuda_runtime.h"
 #include "cuda.h"
 #include "device_launch_parameters.h"
+
 #include "kernel.cuh"
 
 #include <cstring>
@@ -12,27 +13,7 @@ using std::cout;
 using std::endl;
 
 
-
-void printDeviceInfo() { 
-	cudaDeviceProp deviceProp;
-
-	int devID = 0;
-
-	auto error = cudaGetDeviceProperties(&deviceProp, devID);
-
-	if (error != cudaSuccess)
-	{
-		printf("cudaGetDeviceProperties returned error code %d, line(%d)\n", error, __LINE__);
-		exit(EXIT_FAILURE);
-	}
-
-	printf("GPU Device %d: \"%s\" with compute capability %d.%d\n\n", devID, deviceProp.name,
-		deviceProp.major, deviceProp.minor);
-}
-
-
-cudaError_t checkCudaError(cudaError_t cudaStatus, const char* message) {
-
+cudaError_t checkCudaError(cudaError_t cudaStatus, const char* message) { 
 	if (cudaStatus != cudaError_t::cudaSuccess) {
 		printf( "Cuda error code: %d, '%s' msg: %s!\n", cudaStatus, message, cudaGetErrorString(cudaStatus));
 		throw cudaStatus;
@@ -45,7 +26,7 @@ cudaError_t checkCudaError(cudaError_t cudaStatus) {
 }
 
 
-cudaError_t go(numeric_t** resultPtr, numeric_t** a, size_t size, int groups);
+cudaError_t go(numeric_t** resultPtr, numeric_t** a, size_t size, size_t groups);
 
 
 
@@ -61,14 +42,12 @@ const char* concatStrs(const std::string desc, const std::string errStr) {
 const size_t CHUNK = 1000;
 const numeric_t _min = -100;
 const numeric_t _max = 100;
-const numeric_t _delta = .0001;
+const numeric_t _delta = .0000001;
 
 int integrate()
 {
 
-	printDeviceInfo();
-
-	const size_t arraySize = ceil((_max - _min) / _delta);
+	const size_t arraySize = (size_t)ceil((_max - _min) / _delta);
 	const size_t groupCount = arraySize % CHUNK == 0 ? arraySize / CHUNK : arraySize / CHUNK + 1;
 
 	cout << "N = " << arraySize << "(" << arraySize / 1024.0 * sizeof(numeric_t) / 1000 / 1000 << " GB)" << endl;
@@ -81,13 +60,11 @@ int integrate()
 		result[i] = new numeric_t[CHUNK];
 	}
 
-	for (size_t i = 0; i < arraySize; i++) {
+	for (int i = 0; i < arraySize; i++) {
 		size_t group = i / CHUNK;
 		size_t x = i % CHUNK;
 		a[group][x] = _delta * i + _min;
 	}
-	cudaError_t cudaStatus;
-
 	go(result, a, arraySize, groupCount);
 
 	cout << endl << endl;
@@ -98,8 +75,8 @@ int integrate()
 	//}
 	cout << endl << endl;
 	float rows = 100;
-	for (int r = 0; r < rows; r++) {
-		int i = r / rows * arraySize;
+	for (size_t r = 0; r < rows; r++) {
+		int i = (int)(r / rows * arraySize);
 		size_t group = i / CHUNK;
 		size_t x = i % CHUNK;
 		cout << r << ". f(" << a[group][x] << ") = " << exp(a[group][x]) << " | " << result[group][x] << endl;
@@ -109,7 +86,7 @@ int integrate()
 	// tracing tools such as Nsight and Visual Profiler to show complete traces.
 	cudaDeviceReset();
 
-	for (int i = 0; i < groupCount; i++) {
+	for (size_t i = 0; i < groupCount; i++) {
 		delete[] a[i];
 		delete[] result[i];
 	} 
@@ -122,7 +99,7 @@ int integrate()
 }
 
 // Helper function for using CUDA to add vectors in parallel.
-cudaError_t go(numeric_t** resultPtr, numeric_t** a, size_t size, int groups)
+cudaError_t go(numeric_t** resultPtr, numeric_t** a, size_t size, size_t groups)
 {
 	if (size == 0) {
 		return cudaError::cudaSuccess;
@@ -146,7 +123,7 @@ cudaError_t go(numeric_t** resultPtr, numeric_t** a, size_t size, int groups)
 			checkCudaError(cudaMemcpy(addr, a[i], CHUNK * sizeof(numeric_t), cudaMemcpyHostToDevice), "copying memory");
 		}
 		//cudaMemcpy(dev_b, b, size * sizeof(int), cudaMemcpyHostToDevice);
-		int B = std::max((size_t)1, (size_t)ceil((float)size / THREADS_IN_BLOCK));
+		int B = std::max(1, (int)ceil((float)size / THREADS_IN_BLOCK));
 		int SH = 0;// THREADS_IN_BLOCK * sizeof(numeric_t);
 
 		checkCudaError(cudaMalloc((void**)&blockSum, B), "cudaMalloc cache");
@@ -166,7 +143,7 @@ cudaError_t go(numeric_t** resultPtr, numeric_t** a, size_t size, int groups)
 		checkCudaError(cudaGetLastError(), "sumKernel launch failed: ");
 		
 
-		B = std::max((size_t)1, (size_t)ceil(B / THREADS_IN_BLOCK));
+		B = std::max(1, (int)ceil(B / THREADS_IN_BLOCK));
 
 		cout << "Merging results. " << endl;
 		runKernel(sumBlocksKernel, B, output, blockSum, size);
@@ -179,7 +156,7 @@ cudaError_t go(numeric_t** resultPtr, numeric_t** a, size_t size, int groups)
 		// Copy output vector from GPU buffer to host memory.
 
 		cout << "Retrieving results from device. " << endl;
-		for (int i = 0; i < groups; i++) {
+		for (size_t i = 0; i < groups; i++) {
 			cudaMemcpy(resultPtr[i], output + i * CHUNK, CHUNK * sizeof(numeric_t), cudaMemcpyDeviceToHost);
 		}
 

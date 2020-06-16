@@ -51,3 +51,11 @@ __global__ void sumBlocksKernel(numeric_t* sums, numeric_t* blockSum, size_t N)
 }
 
 
+__global__ void mulVec(numeric_t* out, numeric_t* in, numeric_t scalar, size_t N) {
+
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+	if (i < N) {
+		out[i] = exp(sin(sqrt(in[i])));
+	}
+}
