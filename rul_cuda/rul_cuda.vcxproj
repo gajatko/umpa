@@ -79,9 +79,14 @@
   <ItemGroup>
     <CudaCompile Include="kernel.cu" />
     <CudaCompile Include="rula.cu" />
+    <CudaCompile Include="vecmul.cu" />
+    <CudaCompile Include="wave.cu" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="kernel.cuh" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

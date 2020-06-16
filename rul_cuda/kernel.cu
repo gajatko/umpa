@@ -1,19 +1,19 @@
 #include "kernel.cuh"
 #include <thrust/scan.h>
 
-__global__ void expKernel(numeric_t* out, size_t N)
+__global__ void expKernel(numeric_t* out, numeric_t* in, size_t N)
 {
 	int x = blockIdx.x * blockDim.x + threadIdx.x;
 	if (x < N) {
-		out[x] = exp(out[x]);
+		out[x] = exp(in[x]);
 	}
 }
 
-__global__ void intKernel(numeric_t* out, numeric_t delta, size_t N)
+__global__ void intKernel(numeric_t* out, numeric_t* in, numeric_t delta, size_t N)
 {
 	int x = blockIdx.x * blockDim.x + threadIdx.x;
 	if (x < N) {
-		out[x] = out[x] * delta;
+		out[x] = in[x] * delta;
 		if (x % 1 == 0) {
 			//printf("intKernel %d f(%f) = %f\n", x, f[x], out[x]);
 		}
@@ -49,4 +49,5 @@ __global__ void sumBlocksKernel(numeric_t* sums, numeric_t* blockSum, size_t N)
 	}
 	sums[i] = sums[i] + sum;
 }
+
 

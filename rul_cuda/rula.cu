@@ -53,13 +53,17 @@ const char* concatStrs(const std::string desc, const std::string errStr) {
 	return (desc + errStr).c_str();
 }
 
+//#define CHUNK 1000
+//#define _min -100
+//#define _max 10
+//#define _delta .0001
+
 const size_t CHUNK = 1000;
 const numeric_t _min = -100;
 const numeric_t _max = 100;
-const numeric_t _delta = .000001;
+const numeric_t _delta = .0001;
 
-
-int main(int argc, char** argv)
+int integrate()
 {
 
 	printDeviceInfo();
@@ -151,20 +155,21 @@ cudaError_t go(numeric_t** resultPtr, numeric_t** a, size_t size, int groups)
 		// Launch a kernel on the GPU with one thread for each element.
 		
 		cout << "Calculating paramater values. " << endl;
-		expKernel <<<B, THREADS_IN_BLOCK >>> (input, size);
+		runKernel(expKernel, B, output, input, size);
 		checkCudaError(cudaGetLastError(), "expKernel launch failed: ");
 		cout << "Calculating inf areas. " << endl;
-		intKernel <<<B, THREADS_IN_BLOCK >>> (input, _delta, size); 
+		runKernel<numeric_t*, numeric_t*, numeric_t, size_t>(intKernel, B, input, output, _delta, size); 
 		checkCudaError(cudaGetLastError(), "intKernel launch failed: ");
 		cout << "Calculating partial sums. " << endl;
-		sumKernel <<<B, THREADS_IN_BLOCK >>> (output, input, blockSum, size);
+		runKernel(sumKernel, B, output, input, blockSum, size); 
+
 		checkCudaError(cudaGetLastError(), "sumKernel launch failed: ");
 		
 
 		B = std::max((size_t)1, (size_t)ceil(B / THREADS_IN_BLOCK));
 
 		cout << "Merging results. " << endl;
-		sumBlocksKernel <<<B, THREADS_IN_BLOCK >>> (output, blockSum, size);
+		runKernel(sumBlocksKernel, B, output, blockSum, size);
 		checkCudaError(cudaGetLastError(), "sumBlocksKernel launch failed: ");
 
 		// cudaDeviceSynchronize waits for the kernel to finish, and returns
